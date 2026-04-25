@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline PGP Tool</title>
+    <!-- OpenPGP.js Library -->
+    <script src="openpgp.min.js"></script>
+    <style>
+      :root {
+        --primary: #007bff;
+        --secondary: #6c757d;
+        --bg: #f4f7f6;
+        --card-bg: #ffffff;
+        --text: #333;
+      }
+      * {
+        box-sizing: border-box;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 15px;
+        background-color: var(--bg);
+        color: var(--text);
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: center;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+      }
+      .card {
+        background: var(--card-bg);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin-top: 0;
+        border-bottom: 2px solid var(--bg);
+        padding-bottom: 10px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 100px;
+        font-family: monospace;
+        font-size: 0.85rem;
+      }
+
+      button.action-btn {
+        width: 100%;
+        padding: 14px;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 15px;
+      }
+      button.action-btn:active {
+        opacity: 0.8;
+      }
+
+      /* Copy Button Styles */
+      .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+      .header-row label {
+        font-weight: bold;
+        font-size: 0.95rem;
+      }
+      button.copy-btn {
+        padding: 6px 12px;
+        background-color: var(--secondary);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+      }
+      button.copy-btn:active {
+        opacity: 0.8;
+      }
+
+      .fingerprint-box {
+        background: var(--bg);
+        padding: 10px;
+        border-radius: 6px;
+        word-break: break-all;
+        font-family: monospace;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔒 Offline PGP Tool</h1>
+
+      <!-- 1. Key Generation -->
+      <div class="card">
+        <h2>1. Generate Keypair</h2>
+        <input type="text" id="name" placeholder="Your Name (e.g., Alice)" />
+        <input
+          type="email"
+          id="email"
+          placeholder="Your Email (e.g., alice@example.com)"
+        />
+        <input
+          type="password"
+          id="passphrase"
+          placeholder="Passphrase (Required to protect Private Key)"
+        />
+        <button class="action-btn" onclick="generateKeys()">
+          Generate Keys
+        </button>
+
+        <div class="header-row">
+          <label>Public Key (Share with friend):</label>
+          <button class="copy-btn" onclick="copyText('pubKey')">Copy</button>
+        </div>
+        <textarea title="public key" id="pubKey" readonly></textarea>
+
+        <div class="header-row">
+          <label>Private Key (Encrypted, keep secret!):</label>
+          <button class="copy-btn" onclick="copyText('privKey')">Copy</button>
+        </div>
+        <textarea title="private key" id="privKey" readonly></textarea>
+
+        <label style="font-weight: bold; font-size: 0.95rem"
+          >Key Fingerprint:</label
+        >
+        <div class="fingerprint-box" id="fingerprint">-</div>
+      </div>
+
+      <!-- 2. Encrypt -->
+      <div class="card">
+        <h2>2. Encrypt Message</h2>
+        <textarea
+          id="encMessage"
+          placeholder="Secret message to encrypt..."
+        ></textarea>
+        <textarea
+          id="encPubKey"
+          placeholder="Paste your FRIEND'S Public Key here..."
+        ></textarea>
+        <button class="action-btn" onclick="encryptMessage()">Encrypt</button>
+
+        <div class="header-row">
+          <label>Encrypted PGP Message:</label>
+          <button class="copy-btn" onclick="copyText('encResult')">Copy</button>
+        </div>
+        <textarea title="encrypt result" id="encResult" readonly></textarea>
+      </div>
+
+      <!-- 3. Decrypt -->
+      <div class="card">
+        <h2>3. Decrypt Message</h2>
+        <textarea
+          id="decMessage"
+          placeholder="Paste encrypted PGP message here..."
+        ></textarea>
+        <textarea
+          id="decPrivKey"
+          placeholder="Paste YOUR Private Key here..."
+        ></textarea>
+        <input
+          type="password"
+          id="decPassphrase"
+          placeholder="Your Passphrase"
+        />
+        <button class="action-btn" onclick="decryptMessage()">Decrypt</button>
+
+        <label style="font-weight: bold; font-size: 0.95rem"
+          >Decrypted Secret Message:</label
+        >
+        <textarea
+          title="decrypt result"
+          id="decResult"
+          readonly
+          style="margin-top: 5px"
+        ></textarea>
+      </div>
+
+      <!-- 4. Sign -->
+      <div class="card">
+        <h2>4. Sign Message</h2>
+        <textarea id="signMessage" placeholder="Message to sign..."></textarea>
+        <textarea
+          id="signPrivKey"
+          placeholder="Paste YOUR Private Key here..."
+        ></textarea>
+        <input
+          type="password"
+          id="signPassphrase"
+          placeholder="Your Passphrase"
+        />
+        <button class="action-btn" onclick="signMessage()">Sign</button>
+
+        <div class="header-row">
+          <label>Signed PGP Message:</label>
+          <button class="copy-btn" onclick="copyText('signResult')">
+            Copy
+          </button>
+        </div>
+        <textarea title="sign result" id="signResult" readonly></textarea>
+      </div>
+
+      <!-- 5. Verify -->
+      <div class="card">
+        <h2>5. Verify Signature</h2>
+        <textarea
+          id="verMessage"
+          placeholder="Paste signed PGP message here..."
+        ></textarea>
+        <textarea
+          id="verPubKey"
+          placeholder="Paste your FRIEND'S Public Key here..."
+        ></textarea>
+        <button class="action-btn" onclick="verifyMessage()">Verify</button>
+      </div>
+    </div>
+
+    <script>
+      // Utility to show errors easily
+      const handleErr = (e) => alert("Error: " + e.message);
+
+      async function copyToClipboard(textToCopy) {
+        // Navigator clipboard api needs a secure context (https)
+        if (!navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(textToCopy);
+        } else {
+          // Use the 'out of viewport hidden text area' trick
+          const textArea = document.createElement("textarea");
+          textArea.value = textToCopy;
+
+          // Move textarea out of the viewport so it's not visible
+          textArea.style.position = "absolute";
+          textArea.style.left = "-999999px";
+
+          document.body.prepend(textArea);
+          textArea.select();
+
+          try {
+            document.execCommand("copy");
+          } catch (error) {
+            console.error(error);
+          } finally {
+            textArea.remove();
+          }
+        }
+      }
+
+      // Utility to copy text to clipboard
+      async function copyText(elementId) {
+        const text = document.getElementById(elementId).value;
+        if (!text) return alert("Nothing to copy!");
+        try {
+          await copyToClipboard(text);
+
+          // Temporary visual feedback on the button
+          const btn = event.target;
+          const originalText = btn.innerText;
+          btn.innerText = "Copied!";
+          setTimeout(() => {
+            btn.innerText = originalText;
+          }, 2000);
+        } catch (err) {
+          alert("Failed to copy text. Your browser might block this.");
+        }
+      }
+
+      // 1. Generate Keys
+      async function generateKeys() {
+        try {
+          const name = document.getElementById("name").value || "User";
+          const email =
+            document.getElementById("email").value || "user@example.com";
+          const passphrase = document.getElementById("passphrase").value;
+
+          if (!passphrase) {
+            alert("Please enter a passphrase to protect your Private Key.");
+            return;
+          }
+
+          const { privateKey, publicKey } = await openpgp.generateKey({
+            type: "ecc",
+            curve: "curve25519",
+            userIDs: [{ name, email }],
+            passphrase, // Encrypts the private key
+          });
+
+          document.getElementById("pubKey").value = publicKey;
+          document.getElementById("privKey").value = privateKey;
+
+          // Get Fingerprint
+          const keyObj = await openpgp.readKey({ armoredKey: publicKey });
+          document.getElementById("fingerprint").innerText =
+            keyObj.getFingerprint();
+          alert("Keys generated successfully!");
+        } catch (e) {
+          handleErr(e);
+        }
+      }
+
+      // 2. Encrypt
+      async function encryptMessage() {
+        try {
+          const text = document.getElementById("encMessage").value;
+          const pubKeyStr = document.getElementById("encPubKey").value;
+
+          const publicKey = await openpgp.readKey({ armoredKey: pubKeyStr });
+          const message = await openpgp.createMessage({ text });
+
+          const encrypted = await openpgp.encrypt({
+            message,
+            encryptionKeys: publicKey,
+          });
+          document.getElementById("encResult").value = encrypted;
+        } catch (e) {
+          handleErr(e);
+        }
+      }
+
+      // 3. Decrypt
+      async function decryptMessage() {
+        try {
+          const armoredMessage = document.getElementById("decMessage").value;
+          const privKeyStr = document.getElementById("decPrivKey").value;
+          const passphrase = document.getElementById("decPassphrase").value;
+
+          let privateKey = await openpgp.readPrivateKey({
+            armoredKey: privKeyStr,
+          });
+
+          // Decrypt the private key with the passphrase
+          if (!privateKey.isDecrypted()) {
+            if (!passphrase)
+              return alert(
+                "Passphrase is required to unlock your private key!",
+              );
+            privateKey = await openpgp.decryptKey({
+              privateKey,
+              passphrase,
+            });
+          }
+
+          const message = await openpgp.readMessage({ armoredMessage });
+
+          const { data: decrypted } = await openpgp.decrypt({
+            message,
+            decryptionKeys: privateKey,
+          });
+          document.getElementById("decResult").value = decrypted;
+        } catch (e) {
+          if (e.message.includes("Incorrect passphrase")) {
+            alert("Error: Incorrect Passphrase!");
+          } else {
+            handleErr(e);
+          }
+        }
+      }
+
+      // 4. Sign
+      async function signMessage() {
+        try {
+          const text = document.getElementById("signMessage").value;
+          const privKeyStr = document.getElementById("signPrivKey").value;
+          const passphrase = document.getElementById("signPassphrase").value;
+
+          let privateKey = await openpgp.readPrivateKey({
+            armoredKey: privKeyStr,
+          });
+
+          // Decrypt the private key with the passphrase
+          if (!privateKey.isDecrypted()) {
+            if (!passphrase)
+              return alert(
+                "Passphrase is required to unlock your private key!",
+              );
+            privateKey = await openpgp.decryptKey({
+              privateKey,
+              passphrase,
+            });
+          }
+
+          const message = await openpgp.createCleartextMessage({ text });
+
+          const cleartextMessage = await openpgp.sign({
+            message,
+            signingKeys: privateKey,
+          });
+          document.getElementById("signResult").value = cleartextMessage;
+        } catch (e) {
+          if (e.message.includes("Incorrect passphrase")) {
+            alert("Error: Incorrect Passphrase!");
+          } else {
+            handleErr(e);
+          }
+        }
+      }
+
+      // 5. Verify
+      async function verifyMessage() {
+        try {
+          const signedMessage = document.getElementById("verMessage").value;
+          const pubKeyStr = document.getElementById("verPubKey").value;
+
+          const publicKey = await openpgp.readKey({ armoredKey: pubKeyStr });
+          const message = await openpgp.readCleartextMessage({
+            cleartextMessage: signedMessage,
+          });
+
+          const verificationResult = await openpgp.verify({
+            message,
+            verificationKeys: publicKey,
+          });
+
+          // Await the verification of the first signature
+          const { verified } = verificationResult.signatures[0];
+          await verified; // Throws an error if invalid
+
+          alert(
+            "✅ Signature is VALID! The message was signed by the owner of the public key.",
+          );
+        } catch (e) {
+          alert("❌ Signature INVALID or could not be verified.\n" + e.message);
+        }
+      }
+    </script>
+  </body>
+</html>
