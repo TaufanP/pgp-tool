@@ -114,6 +114,29 @@
         font-size: 0.9rem;
         margin-bottom: 15px;
       }
+
+      /* Verify Block Styles */
+      .verify-box {
+        margin-top: 5px;
+        padding: 15px;
+        border-radius: 6px;
+        display: none; /* Hidden by default */
+      }
+      .verify-success {
+        border: 2px solid #28a745;
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .verify-error {
+        border: 2px solid #dc3545;
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .verify-box textarea {
+        background-color: #fff;
+        border-color: #bbb;
+        margin-bottom: 0;
+      }
     </style>
   </head>
   <body>
@@ -123,11 +146,10 @@
       <!-- 1. Key Generation -->
       <div class="card">
         <h2>1. Generate Keypair</h2>
-        <input type="text" id="name" placeholder="Your Name (e.g., Alice)" />
         <input
           type="email"
           id="email"
-          placeholder="Your Email (e.g., alice@example.com)"
+          placeholder="Your Email (e.g., user@example.com)"
         />
         <input
           type="password"
@@ -194,15 +216,11 @@
         />
         <button class="action-btn" onclick="decryptMessage()">Decrypt</button>
 
-        <label style="font-weight: bold; font-size: 0.95rem"
-          >Decrypted Secret Message:</label
-        >
-        <textarea
-          title="decrypt result"
-          id="decResult"
-          readonly
-          style="margin-top: 5px"
-        ></textarea>
+        <div class="header-row">
+          <label>Decrypted Secret Message:</label>
+          <button class="copy-btn" onclick="copyText('decResult')">Copy</button>
+        </div>
+        <textarea title="decrypt result" id="decResult" readonly></textarea>
       </div>
 
       <!-- 4. Sign -->
@@ -241,6 +259,26 @@
           placeholder="Paste your FRIEND'S Public Key here..."
         ></textarea>
         <button class="action-btn" onclick="verifyMessage()">Verify</button>
+
+        <!-- New Verify Result Block -->
+        <div id="verifyBlock" class="verify-box">
+          <div
+            id="verifyStatus"
+            style="font-weight: bold; margin-bottom: 15px"
+          ></div>
+
+          <div class="header-row" id="verifyOriginalHeader">
+            <label>Original Message:</label>
+            <button class="copy-btn" onclick="copyText('verifyOriginalText')">
+              Copy
+            </button>
+          </div>
+          <textarea
+            title="verify original text"
+            id="verifyOriginalText"
+            readonly
+          ></textarea>
+        </div>
       </div>
     </div>
 
@@ -296,7 +334,6 @@
       // 1. Generate Keys
       async function generateKeys() {
         try {
-          const name = document.getElementById("name").value || "User";
           const email =
             document.getElementById("email").value || "user@example.com";
           const passphrase = document.getElementById("passphrase").value;
@@ -307,9 +344,9 @@
           }
 
           const { privateKey, publicKey } = await openpgp.generateKey({
-            type: "ecc",
-            curve: "curve25519",
-            userIDs: [{ name, email }],
+            type: "rsa",
+            rsaBits: 2048,
+            userIDs: [{ email }],
             passphrase, // Encrypts the private key
           });
 
@@ -425,6 +462,14 @@
 
       // 5. Verify
       async function verifyMessage() {
+        const verifyBlock = document.getElementById("verifyBlock");
+        const verifyStatus = document.getElementById("verifyStatus");
+        const verifyOriginalHeader = document.getElementById(
+          "verifyOriginalHeader",
+        );
+        const verifyOriginalText =
+          document.getElementById("verifyOriginalText");
+
         try {
           const signedMessage = document.getElementById("verMessage").value;
           const pubKeyStr = document.getElementById("verPubKey").value;
@@ -443,11 +488,27 @@
           const { verified } = verificationResult.signatures[0];
           await verified; // Throws an error if invalid
 
-          alert(
-            "✅ Signature is VALID! The message was signed by the owner of the public key.",
-          );
+          // Success State formatting
+          verifyBlock.style.display = "block";
+          verifyBlock.className = "verify-box verify-success";
+          verifyStatus.innerText =
+            "✅ Signature is VALID! The message was signed by the owner of the public key.";
+
+          // Display extracted original text
+          verifyOriginalHeader.style.display = "flex";
+          verifyOriginalText.style.display = "block";
+          verifyOriginalText.value = message.getText();
         } catch (e) {
-          alert("❌ Signature INVALID or could not be verified.\n" + e.message);
+          // Error State formatting
+          verifyBlock.style.display = "block";
+          verifyBlock.className = "verify-box verify-error";
+          verifyStatus.innerText =
+            "❌ Signature INVALID or could not be verified.\n" + e.message;
+
+          // Hide text elements on failure
+          verifyOriginalHeader.style.display = "none";
+          verifyOriginalText.style.display = "none";
+          verifyOriginalText.value = "";
         }
       }
     </script>
