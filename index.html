@@ -373,8 +373,8 @@
           }
 
           const { privateKey, publicKey } = await openpgp.generateKey({
-            type: "rsa",
-            rsaBits: 2048,
+            type: "ecc",
+            curve: "curve25519",
             userIDs: [{ email }],
             passphrase, // Encrypts the private key
           });
