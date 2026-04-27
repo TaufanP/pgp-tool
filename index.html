@@ -10,6 +10,7 @@
       :root {
         --primary: #007bff;
         --secondary: #6c757d;
+        --danger: #dc3545;
         --bg: #f4f7f6;
         --card-bg: #ffffff;
         --text: #333;
@@ -81,6 +82,10 @@
         opacity: 0.8;
       }
 
+      button.danger-btn {
+        background-color: var(--danger);
+      }
+
       /* Copy Button Styles */
       .header-row {
         display: flex;
@@ -142,6 +147,10 @@
   <body>
     <div class="container">
       <h1>🔒 Offline PGP Tool</h1>
+
+      <button class="action-btn danger-btn" onclick="clearAll()">
+        🗑️ Clear All Fields
+      </button>
 
       <!-- 1. Key Generation -->
       <div class="card">
@@ -285,6 +294,26 @@
     <script>
       // Utility to show errors easily
       const handleErr = (e) => alert("Error: " + e.message);
+
+      // Clear all fields utility
+      function clearAll() {
+        if (
+          !confirm(
+            "Are you sure you want to clear all fields? Make sure you have copied any keys or messages you need!",
+          )
+        ) {
+          return;
+        }
+
+        // Clear all inputs and textareas
+        document.querySelectorAll("input, textarea").forEach((el) => {
+          el.value = "";
+        });
+
+        // Reset specific UI elements
+        document.getElementById("fingerprint").innerText = "-";
+        document.getElementById("verifyBlock").style.display = "none";
+      }
 
       async function copyToClipboard(textToCopy) {
         // Navigator clipboard api needs a secure context (https)
