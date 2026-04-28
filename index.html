@@ -81,7 +81,7 @@
       button.action-btn:active {
         opacity: 0.8;
       }
-      
+
       button.danger-btn {
         background-color: var(--danger);
       }
@@ -121,7 +121,8 @@
       }
 
       /* Result Block Styles */
-      .verify-box, .info-box {
+      .verify-box,
+      .info-box {
         margin-top: 5px;
         padding: 15px;
         border-radius: 6px;
@@ -154,7 +155,9 @@
     <div class="container">
       <h1>🔒 Offline PGP Tool</h1>
 
-      <button class="action-btn danger-btn" onclick="clearAll()">🗑️ Clear All Fields</button>
+      <button class="action-btn danger-btn" onclick="clearAll()">
+        🗑️ Clear All Fields
+      </button>
 
       <!-- 1. Key Generation -->
       <div class="card">
@@ -246,11 +249,7 @@
           <label>Decrypted Secret Message:</label>
           <button class="copy-btn" onclick="copyText('decResult')">Copy</button>
         </div>
-        <textarea
-          title="decrypt result"
-          id="decResult"
-          readonly
-        ></textarea>
+        <textarea title="decrypt result" id="decResult" readonly></textarea>
       </div>
 
       <!-- 5. Sign -->
@@ -292,13 +291,22 @@
 
         <!-- Verify Result Block -->
         <div id="verifyBlock" class="verify-box">
-          <div id="verifyStatus" style="font-weight: bold; margin-bottom: 15px;"></div>
-          
+          <div
+            id="verifyStatus"
+            style="font-weight: bold; margin-bottom: 15px"
+          ></div>
+
           <div class="header-row" id="verifyOriginalHeader">
             <label>Original Message:</label>
-            <button class="copy-btn" onclick="copyText('verifyOriginalText')">Copy</button>
+            <button class="copy-btn" onclick="copyText('verifyOriginalText')">
+              Copy
+            </button>
           </div>
-          <textarea title="verify original text" id="verifyOriginalText" readonly></textarea>
+          <textarea
+            title="verify original text"
+            id="verifyOriginalText"
+            readonly
+          ></textarea>
         </div>
       </div>
     </div>
@@ -309,22 +317,26 @@
 
       // Clear all fields utility
       function clearAll() {
-        if (!confirm("Are you sure you want to clear all fields? Make sure you have copied any keys or messages you need!")) {
+        if (
+          !confirm(
+            "Are you sure you want to clear all fields? Make sure you have copied any keys or messages you need!",
+          )
+        ) {
           return;
         }
-        
+
         // Clear all inputs and textareas
         document.querySelectorAll("input, textarea").forEach((el) => {
           el.value = "";
         });
-        
+
         // Reset specific UI elements
         document.getElementById("fingerprint").innerText = "-";
-        
+
         const verifyBlock = document.getElementById("verifyBlock");
         verifyBlock.style.display = "none";
         verifyBlock.className = "verify-box";
-        
+
         const inspectBlock = document.getElementById("inspectBlock");
         inspectBlock.style.display = "none";
         inspectBlock.innerHTML = "";
@@ -378,7 +390,8 @@
       // 1. Generate Keys
       async function generateKeys() {
         try {
-          const email = document.getElementById("email").value || "user@example.com";
+          const email =
+            document.getElementById("email").value || "user@example.com";
           const passphrase = document.getElementById("passphrase").value;
 
           if (!passphrase) {
@@ -410,7 +423,9 @@
       async function inspectKey() {
         const inspectBlock = document.getElementById("inspectBlock");
         try {
-          const keyStr = document.getElementById("inspectKeyInput").value.trim();
+          const keyStr = document
+            .getElementById("inspectKeyInput")
+            .value.trim();
           if (!keyStr) {
             alert("Please paste a Public or Private PGP Key to inspect.");
             return;
@@ -418,33 +433,41 @@
 
           // readKey parses both public and private keys to extract metadata
           const key = await openpgp.readKey({ armoredKey: keyStr });
-          
+
+          const user = key?.users?.[0]?.userID;
+
           const userIDs = key.getUserIDs(); // Returns array of emails/names
           const fingerprint = key.getFingerprint().toUpperCase();
           const keyId = key.getKeyID().toHex().toUpperCase();
           const creationTime = key.getCreationTime();
           const isPrivate = key.isPrivate();
           const algoInfo = key.getAlgorithmInfo();
-          
-          let algoStr = algoInfo.algorithm ? algoInfo.algorithm.toUpperCase() : "Unknown";
+
+          let algoStr = algoInfo.algorithm
+            ? algoInfo.algorithm.toUpperCase()
+            : "Unknown";
           if (algoInfo.bits) algoStr += ` (${algoInfo.bits}-bit)`;
           if (algoInfo.curve) algoStr += ` (${algoInfo.curve})`;
 
           const resultHtml = `
             <strong>Key Type:</strong> ${isPrivate ? "Private Key (Contains Secret Data)" : "Public Key"}<br>
-            <strong>Email / User ID:</strong> ${userIDs.length ? userIDs.join(", ") : "None"}<br>
+            <strong>Email</strong> ${user?.email ? user?.email : "None"}<br>
             <strong>Key ID:</strong> ${keyId}<br>
             <strong>Fingerprint:</strong> ${fingerprint}<br>
             <strong>Algorithm:</strong> ${algoStr}<br>
             <strong>Created:</strong> ${creationTime.toLocaleString()}
           `;
-          
+
           inspectBlock.style.display = "block";
           inspectBlock.innerHTML = resultHtml;
-
         } catch (e) {
           inspectBlock.style.display = "none";
-          handleErr(new Error("Could not parse key. Make sure it's a valid PGP key block.\nDetails: " + e.message));
+          handleErr(
+            new Error(
+              "Could not parse key. Make sure it's a valid PGP key block.\nDetails: " +
+                e.message,
+            ),
+          );
         }
       }
 
@@ -549,8 +572,11 @@
       async function verifyMessage() {
         const verifyBlock = document.getElementById("verifyBlock");
         const verifyStatus = document.getElementById("verifyStatus");
-        const verifyOriginalHeader = document.getElementById("verifyOriginalHeader");
-        const verifyOriginalText = document.getElementById("verifyOriginalText");
+        const verifyOriginalHeader = document.getElementById(
+          "verifyOriginalHeader",
+        );
+        const verifyOriginalText =
+          document.getElementById("verifyOriginalText");
 
         try {
           const signedMessage = document.getElementById("verMessage").value;
@@ -573,19 +599,20 @@
           // Success State formatting
           verifyBlock.style.display = "block";
           verifyBlock.className = "verify-box verify-success";
-          verifyStatus.innerText = "✅ Signature is VALID! The message was signed by the owner of the public key.";
-          
+          verifyStatus.innerText =
+            "✅ Signature is VALID! The message was signed by the owner of the public key.";
+
           // Display extracted original text
           verifyOriginalHeader.style.display = "flex";
           verifyOriginalText.style.display = "block";
           verifyOriginalText.value = message.getText();
-
         } catch (e) {
           // Error State formatting
           verifyBlock.style.display = "block";
           verifyBlock.className = "verify-box verify-error";
-          verifyStatus.innerText = "❌ Signature INVALID or could not be verified.\n" + e.message;
-          
+          verifyStatus.innerText =
+            "❌ Signature INVALID or could not be verified.\n" + e.message;
+
           // Hide text elements on failure
           verifyOriginalHeader.style.display = "none";
           verifyOriginalText.style.display = "none";
