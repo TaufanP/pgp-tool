@@ -81,7 +81,7 @@
       button.action-btn:active {
         opacity: 0.8;
       }
-
+      
       button.danger-btn {
         background-color: var(--danger);
       }
@@ -120,8 +120,8 @@
         margin-bottom: 15px;
       }
 
-      /* Verify Block Styles */
-      .verify-box {
+      /* Result Block Styles */
+      .verify-box, .info-box {
         margin-top: 5px;
         padding: 15px;
         border-radius: 6px;
@@ -142,15 +142,19 @@
         border-color: #bbb;
         margin-bottom: 0;
       }
+      .info-box {
+        background-color: var(--bg);
+        border: 1px solid #ccc;
+        word-break: break-word;
+        line-height: 1.6;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>🔒 Offline PGP Tool</h1>
 
-      <button class="action-btn danger-btn" onclick="clearAll()">
-        🗑️ Clear All Fields
-      </button>
+      <button class="action-btn danger-btn" onclick="clearAll()">🗑️ Clear All Fields</button>
 
       <!-- 1. Key Generation -->
       <div class="card">
@@ -187,9 +191,22 @@
         <div class="fingerprint-box" id="fingerprint">-</div>
       </div>
 
-      <!-- 2. Encrypt -->
+      <!-- 2. Inspect Key -->
       <div class="card">
-        <h2>2. Encrypt Message</h2>
+        <h2>2. Inspect Key</h2>
+        <textarea
+          id="inspectKeyInput"
+          placeholder="Paste a Public or Private PGP Key here..."
+        ></textarea>
+        <button class="action-btn" onclick="inspectKey()">Inspect Key</button>
+
+        <!-- Inspect Result Block -->
+        <div id="inspectBlock" class="info-box"></div>
+      </div>
+
+      <!-- 3. Encrypt -->
+      <div class="card">
+        <h2>3. Encrypt Message</h2>
         <textarea
           id="encMessage"
           placeholder="Secret message to encrypt..."
@@ -207,9 +224,9 @@
         <textarea title="encrypt result" id="encResult" readonly></textarea>
       </div>
 
-      <!-- 3. Decrypt -->
+      <!-- 4. Decrypt -->
       <div class="card">
-        <h2>3. Decrypt Message</h2>
+        <h2>4. Decrypt Message</h2>
         <textarea
           id="decMessage"
           placeholder="Paste encrypted PGP message here..."
@@ -229,12 +246,16 @@
           <label>Decrypted Secret Message:</label>
           <button class="copy-btn" onclick="copyText('decResult')">Copy</button>
         </div>
-        <textarea title="decrypt result" id="decResult" readonly></textarea>
+        <textarea
+          title="decrypt result"
+          id="decResult"
+          readonly
+        ></textarea>
       </div>
 
-      <!-- 4. Sign -->
+      <!-- 5. Sign -->
       <div class="card">
-        <h2>4. Sign Message</h2>
+        <h2>5. Sign Message</h2>
         <textarea id="signMessage" placeholder="Message to sign..."></textarea>
         <textarea
           id="signPrivKey"
@@ -256,9 +277,9 @@
         <textarea title="sign result" id="signResult" readonly></textarea>
       </div>
 
-      <!-- 5. Verify -->
+      <!-- 6. Verify -->
       <div class="card">
-        <h2>5. Verify Signature</h2>
+        <h2>6. Verify Signature</h2>
         <textarea
           id="verMessage"
           placeholder="Paste signed PGP message here..."
@@ -269,24 +290,15 @@
         ></textarea>
         <button class="action-btn" onclick="verifyMessage()">Verify</button>
 
-        <!-- New Verify Result Block -->
+        <!-- Verify Result Block -->
         <div id="verifyBlock" class="verify-box">
-          <div
-            id="verifyStatus"
-            style="font-weight: bold; margin-bottom: 15px"
-          ></div>
-
+          <div id="verifyStatus" style="font-weight: bold; margin-bottom: 15px;"></div>
+          
           <div class="header-row" id="verifyOriginalHeader">
             <label>Original Message:</label>
-            <button class="copy-btn" onclick="copyText('verifyOriginalText')">
-              Copy
-            </button>
+            <button class="copy-btn" onclick="copyText('verifyOriginalText')">Copy</button>
           </div>
-          <textarea
-            title="verify original text"
-            id="verifyOriginalText"
-            readonly
-          ></textarea>
+          <textarea title="verify original text" id="verifyOriginalText" readonly></textarea>
         </div>
       </div>
     </div>
@@ -297,22 +309,25 @@
 
       // Clear all fields utility
       function clearAll() {
-        if (
-          !confirm(
-            "Are you sure you want to clear all fields? Make sure you have copied any keys or messages you need!",
-          )
-        ) {
+        if (!confirm("Are you sure you want to clear all fields? Make sure you have copied any keys or messages you need!")) {
           return;
         }
-
+        
         // Clear all inputs and textareas
         document.querySelectorAll("input, textarea").forEach((el) => {
           el.value = "";
         });
-
+        
         // Reset specific UI elements
         document.getElementById("fingerprint").innerText = "-";
-        document.getElementById("verifyBlock").style.display = "none";
+        
+        const verifyBlock = document.getElementById("verifyBlock");
+        verifyBlock.style.display = "none";
+        verifyBlock.className = "verify-box";
+        
+        const inspectBlock = document.getElementById("inspectBlock");
+        inspectBlock.style.display = "none";
+        inspectBlock.innerHTML = "";
       }
 
       async function copyToClipboard(textToCopy) {
@@ -363,8 +378,7 @@
       // 1. Generate Keys
       async function generateKeys() {
         try {
-          const email =
-            document.getElementById("email").value || "user@example.com";
+          const email = document.getElementById("email").value || "user@example.com";
           const passphrase = document.getElementById("passphrase").value;
 
           if (!passphrase) {
@@ -392,7 +406,49 @@
         }
       }
 
-      // 2. Encrypt
+      // 2. Inspect Key
+      async function inspectKey() {
+        const inspectBlock = document.getElementById("inspectBlock");
+        try {
+          const keyStr = document.getElementById("inspectKeyInput").value.trim();
+          if (!keyStr) {
+            alert("Please paste a Public or Private PGP Key to inspect.");
+            return;
+          }
+
+          // readKey parses both public and private keys to extract metadata
+          const key = await openpgp.readKey({ armoredKey: keyStr });
+          
+          const userIDs = key.getUserIDs(); // Returns array of emails/names
+          const fingerprint = key.getFingerprint().toUpperCase();
+          const keyId = key.getKeyID().toHex().toUpperCase();
+          const creationTime = key.getCreationTime();
+          const isPrivate = key.isPrivate();
+          const algoInfo = key.getAlgorithmInfo();
+          
+          let algoStr = algoInfo.algorithm ? algoInfo.algorithm.toUpperCase() : "Unknown";
+          if (algoInfo.bits) algoStr += ` (${algoInfo.bits}-bit)`;
+          if (algoInfo.curve) algoStr += ` (${algoInfo.curve})`;
+
+          const resultHtml = `
+            <strong>Key Type:</strong> ${isPrivate ? "Private Key (Contains Secret Data)" : "Public Key"}<br>
+            <strong>Email / User ID:</strong> ${userIDs.length ? userIDs.join(", ") : "None"}<br>
+            <strong>Key ID:</strong> ${keyId}<br>
+            <strong>Fingerprint:</strong> ${fingerprint}<br>
+            <strong>Algorithm:</strong> ${algoStr}<br>
+            <strong>Created:</strong> ${creationTime.toLocaleString()}
+          `;
+          
+          inspectBlock.style.display = "block";
+          inspectBlock.innerHTML = resultHtml;
+
+        } catch (e) {
+          inspectBlock.style.display = "none";
+          handleErr(new Error("Could not parse key. Make sure it's a valid PGP key block.\nDetails: " + e.message));
+        }
+      }
+
+      // 3. Encrypt
       async function encryptMessage() {
         try {
           const text = document.getElementById("encMessage").value;
@@ -411,7 +467,7 @@
         }
       }
 
-      // 3. Decrypt
+      // 4. Decrypt
       async function decryptMessage() {
         try {
           const armoredMessage = document.getElementById("decMessage").value;
@@ -450,7 +506,7 @@
         }
       }
 
-      // 4. Sign
+      // 5. Sign
       async function signMessage() {
         try {
           const text = document.getElementById("signMessage").value;
@@ -489,15 +545,12 @@
         }
       }
 
-      // 5. Verify
+      // 6. Verify
       async function verifyMessage() {
         const verifyBlock = document.getElementById("verifyBlock");
         const verifyStatus = document.getElementById("verifyStatus");
-        const verifyOriginalHeader = document.getElementById(
-          "verifyOriginalHeader",
-        );
-        const verifyOriginalText =
-          document.getElementById("verifyOriginalText");
+        const verifyOriginalHeader = document.getElementById("verifyOriginalHeader");
+        const verifyOriginalText = document.getElementById("verifyOriginalText");
 
         try {
           const signedMessage = document.getElementById("verMessage").value;
@@ -520,20 +573,19 @@
           // Success State formatting
           verifyBlock.style.display = "block";
           verifyBlock.className = "verify-box verify-success";
-          verifyStatus.innerText =
-            "✅ Signature is VALID! The message was signed by the owner of the public key.";
-
+          verifyStatus.innerText = "✅ Signature is VALID! The message was signed by the owner of the public key.";
+          
           // Display extracted original text
           verifyOriginalHeader.style.display = "flex";
           verifyOriginalText.style.display = "block";
           verifyOriginalText.value = message.getText();
+
         } catch (e) {
           // Error State formatting
           verifyBlock.style.display = "block";
           verifyBlock.className = "verify-box verify-error";
-          verifyStatus.innerText =
-            "❌ Signature INVALID or could not be verified.\n" + e.message;
-
+          verifyStatus.innerText = "❌ Signature INVALID or could not be verified.\n" + e.message;
+          
           // Hide text elements on failure
           verifyOriginalHeader.style.display = "none";
           verifyOriginalText.style.display = "none";
